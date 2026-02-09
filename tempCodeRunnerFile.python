@@ -1,0 +1,69 @@
+from decimal import Decimal, ROUND_HALF_UP
+
+def calculate_bill(load_kw, current_reading, prev_reading, off_peak_units):
+    
+    units = Decimal(current_reading) - Decimal(prev_reading)
+    
+    
+   
+    # rate_fixed = Decimal('364.00')
+    # fixed_charge = Decimal(load_kw) * rate_fixed
+    # energy_charge = units_consumed * Decimal('6.15638') 
+    # duty = energy_charge * Decimal('0.1123')
+    # tod_rebate = Decimal(off_peak_units) * Decimal('1.2355')
+
+    
+    fixed_rate_slab1 = 76.0   # 0-50 units (Per Connection)
+    fixed_rate_slab2 = 129.0  # 51-150 units (Per Connection)
+    fixed_rate_per_0_1kw = 28.0 # >150 units (Per 0.1 kW)
+    energy_rates = [4.45, 5.41, 6.79, 6.98]
+    if units <= 50:
+        fixed_charge = fixed_rate_slab1
+    elif units <= 150:
+        fixed_charge = fixed_rate_slab2
+    else:
+        # The logic from Image 2: "Every 15 units or part thereof = 0.1 kW"
+        # Math.ceil(units / 15) gives the number of 0.1kW chunks
+        chunks = math.ceil(units / 15)
+        fixed_charge = chunks * fixed_rate_per_0_1kw
+
+    # --- 2. CALCULATE ENERGY CHARGES (TELESCOPIC) ---
+    energy_charge = 0.0
+    remaining_units = units
+    
+    # Slab 1: 0-50
+    if remaining_units > 0:
+        slab_units = min(remaining_units, 50)
+        energy_charge += slab_units * energy_rates[0]
+        remaining_units -= slab_units
+        
+    # Slab 2: 51-150 (Next 100 units)
+    if remaining_units > 0:
+        slab_units = min(remaining_units, 100)
+        energy_charge += slab_units * energy_rates[1]
+        remaining_units -= slab_units
+
+    # Slab 3: 151-300 (Next 150 units)
+    if remaining_units > 0:
+        slab_units = min(remaining_units, 150)
+        energy_charge += slab_units * energy_rates[2]
+        remaining_units -= slab_units
+        
+    # Slab 4: Above 300
+    if remaining_units > 0:
+        energy_charge += remaining_units * energy_rates[3]
+    
+    total_amount = (fixed_charge + energy_charge + duty) - tod_rebate
+
+
+    
+    return {
+        "units": round(units, 2),
+        "fixed_charge": round(fixed_charge, 2),
+        "energy_charge": round(energy_charge, 2),
+        "duty": round(duty, 2),
+        "tod_rebate": round(tod_rebate, 2),
+        "total_amount": round(total_amount, 2),
+    }
+
+print(f"Bill for 155 units: {calculate_bill(0, 150, 0, 0)}")
